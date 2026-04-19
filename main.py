@@ -110,7 +110,7 @@ Examples:
 
 def print_banner():
     print("=" * 70)
-    print("   🎬  THE LEDGER  —  Financial Darkness Documentary System")
+    print("   🎬  THE LEDGER")
     print("   🤖  AI Faceless Channel Automation v3.0")
     print("=" * 70)
     print()
