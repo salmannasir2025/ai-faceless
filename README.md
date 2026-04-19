@@ -124,6 +124,20 @@ AFFILIATE_BYBIT=https://www.bybit.com/invite?ref=YOUR_CODE
 
 ## Usage
 
+### For Older/Legacy Macs (2012-2015 Models with OpenCore)
+
+The GUI may crash on older systems due to tkinter/macOS compatibility. **Use CLI mode instead**:
+
+```bash
+# Easy launcher (recommended)
+./run_cli.command "FTX Collapse"
+
+# Or run directly with system Python
+/usr/bin/python3 main.py "FTX Collapse" --dry-run --style documentary
+```
+
+**Tested on**: MacBook Pro 2012 (Core i5, 16GB RAM) with OpenCore Legacy Patcher running macOS 15.4
+
 ### Language Settings
 
 **Default: English (en)** - For USA, Europe, and English-speaking audiences
