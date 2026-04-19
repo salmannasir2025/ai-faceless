@@ -75,5 +75,6 @@ class VoiceCloneManager:
         
         return await self.generate_edge(script, output_path)
 
-4. legal/safety_checker.py (NEW)
-This is the non-negotiable human-protection layer. Runs before any script reaches Artisan.
+
+if __name__ == "__main__":
+    print("VoiceCloneManager module loaded successfully")

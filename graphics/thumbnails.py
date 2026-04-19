@@ -63,5 +63,6 @@ class ThumbnailFactory:
         
         return variants
 
-3. voice/clone_manager.py (NEW)
-Wraps ElevenLabs voice clone + free Edge-TTS fallback.
+
+if __name__ == "__main__":
+    print("ThumbnailFactory module loaded successfully")

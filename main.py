@@ -230,5 +230,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-2️⃣ test_mock.py — Full Pipeline Validation
-This script runs the entire pipeline with zero external API calls. It creates fake research, a fake script, generates real audio/video files using free tools, and validates that every module connects properly.

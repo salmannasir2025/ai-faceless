@@ -378,6 +378,3 @@ def run_mock_pipeline():
 
 if __name__ == "__main__":
     run_mock_pipeline()
-
-🚀 How to Run
-Step 1: Install dependencies

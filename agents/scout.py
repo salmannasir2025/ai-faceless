@@ -306,18 +306,3 @@ class FinancialScout:
                 pass
         
         return context
-
-🧩 Integration Points
-Your original files to keep (copy to new repo):
-core/governor.py → unchanged
-core/project_state.py → add set_metadata() / get_metadata() if not present
-core/api_manager.py → add get_key() method if not present
-agents/artisan.py → rename method to assemble_documentary() and add teal/orange LUT support
-New files to create (from earlier in this session):
-legal/safety_checker.py (provided in previous response)
-voice/clone_manager.py (provided in previous response)
-graphics/thumbnails.py (provided in previous response)
-graphics/doc_graphics.py (provided in previous response)
-integrations/notion_sync.py (simple wrapper around notion-client)
-
-🚀 How to Run

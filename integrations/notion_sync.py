@@ -77,5 +77,6 @@ class DocumentGraphicFactory:
         img.save(out)
         return out
 
-2. graphics/thumbnails.py (NEW)
-Your existing Artisan handles video; this handles the static thumbnail factory.
+
+if __name__ == "__main__":
+    print("NotionSync module loaded successfully")

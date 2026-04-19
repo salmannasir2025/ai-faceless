@@ -311,5 +311,3 @@ Cases like this are exactly why operational security matters. [AFFILIATE_BRIDGE]
 ACT V - VERDICT:
 The sentence was 25 years. Do you think justice was served? Comment below.
 """
-2️⃣ agents/publisher.py — The Affiliate Publisher
-Uploads as PRIVATE with full synthetic disclosure, affiliate links, and finance disclaimers.

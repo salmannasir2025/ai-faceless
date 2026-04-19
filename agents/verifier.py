@@ -422,6 +422,3 @@ class Verifier(LegalVerifier):
     Backward-compatible name for existing imports.
     """
     pass
-
-How It Integrates
-The orchestrator already calls it like this:
