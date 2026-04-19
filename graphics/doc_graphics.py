@@ -76,6 +76,3 @@ class DocumentGraphicFactory:
         out = f"{self.assets_dir}/{output_name}.png"
         img.save(out)
         return out
-
-2. graphics/thumbnails.py (NEW)
-Your existing Artisan handles video; this handles the static thumbnail factory.

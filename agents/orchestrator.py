@@ -503,5 +503,3 @@ class LedgerOrchestrator:
             return float(result.stdout.strip())
         except:
             return 0.0
-2️⃣ agents/scout.py — The Financial Scout
-Replaces general news scanning with institutional-grade financial crime intelligence.
