@@ -20,6 +20,7 @@ class LedgerConfigGUI:
         ("Moonshot Kimi API Key", "KIMI_API_KEY", 10, False),
         ("DeepSeek API Key", "DEEPSEEK_API_KEY", 10, False),
         ("Alibaba Qwen API Key", "QIANWEN_API_KEY", 10, False),
+        ("Puter Auth Token (Free Kimi K2.5)", "PUTER_AUTH_TOKEN", 10, False),
         ("", "", 0, False),  # Spacer
         ("ElevenLabs API Key", "ELEVENLABS_API_KEY", 10, False),
         ("ElevenLabs Voice ID", "ELEVENLABS_VOICE_ID", 10, False),
@@ -148,13 +149,18 @@ class LedgerConfigGUI:
         # === HELP TEXT ===
         help_text = """
 📖 Quick Help:
-• At least one LLM API key is required (Gemini recommended - free tier)
+• At least one LLM API key is required (Gemini OR Puter recommended - both free)
+• Puter Auth Token = Free access to Kimi K2.5 (1T parameter model)
+  Get it at: https://puter.com/dashboard → Copy auth token
 • ElevenLabs voice cloning is optional (falls back to Edge-TTS)
 • YouTube upload requires client_secrets.json from Google Cloud Console
 • Affiliate links are injected into video end cards
 • All keys are stored in .env file (excluded from Git via .gitignore)
 
 🔒 Security: This file saves API keys locally only. Never share .env files.
+
+🚀 Pro Tip: Puter provides FREE unlimited access to Kimi K2.5!
+   No credit card required. Just sign up at puter.com
         """
         help_label = ttk.Label(
             self.scrollable_frame,

@@ -47,6 +47,15 @@ class APIManager:
             "models": ["qwen-turbo", "qwen-plus", "qwen-max"],
             "default_model": "qwen-plus",
             "free": True
+        },
+        "PUTER": {
+            "name": "Puter AI (Free Kimi K2.5)",
+            "base_url": "https://api.puter.com/puterai/openai/v1/",
+            "models": ["moonshotai/kimi-k2-5", "moonshotai/kimi-k2", "moonshotai/kimi-dev-72b"],
+            "default_model": "moonshotai/kimi-k2-5",
+            "free": True,
+            "openai_compatible": True,
+            "description": "Free access to Kimi K2.5 via Puter. Get auth token at puter.com/dashboard"
         }
     }
     
