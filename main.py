@@ -24,15 +24,22 @@ from legal.safety_checker import LegalSafetyChecker
 from core.security_utils import validate_topic, validate_enum, sanitize_path, InputValidationError
 
 
+def get_project_root():
+    """Get the absolute path to the project root directory."""
+    return os.path.dirname(os.path.abspath(__file__))
+
+
 def setup_directories():
-    """Ensure required folder structure exists."""
+    """Ensure required folder structure exists in project root."""
+    project_root = get_project_root()
     dirs = [
         "output/videos", "output/audio", "output/thumbnails",
         "assets/host", "assets/objects", "assets/broll",
         "states", "logs", "config"
     ]
     for d in dirs:
-        os.makedirs(d, exist_ok=True)
+        full_path = os.path.join(project_root, d)
+        os.makedirs(full_path, exist_ok=True)
 
 
 def validate_environment():
@@ -133,6 +140,10 @@ def print_config(args):
 
 
 def main():
+    # Change to project directory to ensure paths work correctly
+    project_root = get_project_root()
+    os.chdir(project_root)
+    
     print_banner()
     validate_environment()
     
