@@ -27,7 +27,6 @@ except ImportError:
 
 from core.api_manager import APIManager
 from core.governor import Governor
-from core.project_state import ProjectState
 from agents.orchestrator import LedgerOrchestrator
 
 
@@ -42,6 +41,8 @@ class WebOrchestratorWrapper:
         self.pipeline_thread = None
         self.is_running = False
         self.final_result = None
+        self._lock = threading.Lock()  # Thread safety for shared state
+        self._pending_prompt = None   # Store pending prompt for GUI
         
     def start_pipeline(self, topic, style, language, use_failover=True):
         """Start the pipeline in background thread."""
@@ -109,24 +110,59 @@ class WebOrchestratorWrapper:
     
     def check_prompts(self):
         """Check if there's a pending prompt."""
+        with self._lock:
+            if self._pending_prompt is not None:
+                return self._pending_prompt
+        
         try:
-            return self.prompt_queue.get_nowait()
+            item = self.prompt_queue.get_nowait()
+            with self._lock:
+                self._pending_prompt = item
+            return item
         except queue.Empty:
             return None
     
     def answer_prompt(self, answer):
         """Answer a pending prompt."""
-        try:
-            item = self.prompt_queue.get_nowait()
-            item["container"]["value"] = answer
-            item["event"].set()
-            return True
-        except queue.Empty:
+        with self._lock:
+            if self._pending_prompt is not None:
+                self._pending_prompt["container"]["value"] = answer
+                self._pending_prompt["event"].set()
+                self._pending_prompt = None
+                return True
             return False
+    
+    def reset(self):
+        """Reset wrapper state for new run."""
+        with self._lock:
+            self.is_running = False
+            self.final_result = None
+            self._pending_prompt = None
+            # Clear queues
+            while not self.progress_queue.empty():
+                try:
+                    self.progress_queue.get_nowait()
+                except queue.Empty:
+                    break
+            while not self.prompt_queue.empty():
+                try:
+                    self.prompt_queue.get_nowait()
+                except queue.Empty:
+                    break
 
 
-# Global wrapper instance
-wrapper = WebOrchestratorWrapper()
+# Global wrapper instance with lazy initialization
+_wrapper_instance = None
+_wrapper_lock = threading.Lock()
+
+def get_wrapper():
+    """Get thread-safe singleton wrapper instance."""
+    global _wrapper_instance
+    if _wrapper_instance is None:
+        with _wrapper_lock:
+            if _wrapper_instance is None:
+                _wrapper_instance = WebOrchestratorWrapper()
+    return _wrapper_instance
 
 
 def create_interface():
@@ -252,13 +288,16 @@ def create_interface():
                 return gr.update(value="❌ Please enter a topic"), gr.update(active=False)
             
             lang_code = language.split()[0]
-            wrapper.start_pipeline(topic, style, lang_code)
+            w = get_wrapper()
+            w.reset()
+            w.start_pipeline(topic, style, lang_code)
             
             return gr.update(value="🚀 Pipeline started..."), gr.update(active=True)
         
         def check_updates(current_state):
             """Check for updates from pipeline."""
-            updates = wrapper.get_updates()
+            w = get_wrapper()
+            updates = w.get_updates()
             logs = current_state.get("logs", [])
             result = current_state
             
@@ -304,10 +343,10 @@ def create_interface():
                 progress_values.append(progress_updates.get(stage, 0))
             
             return (
-                gr.update(active=True) if wrapper.is_running else gr.update(active=False),
-                "Running..." if wrapper.is_running else "Ready",
+                gr.update(active=True) if w.is_running else gr.update(active=False),
+                "Running..." if w.is_running else "Ready",
                 "\n".join(logs[-20:]),
-                {"logs": logs, "running": wrapper.is_running},
+                {"logs": logs, "running": w.is_running},
                 None
             ) + tuple(progress_values)
         
@@ -333,9 +372,10 @@ def create_interface():
         
         # Load initial API status
         def load_api_status():
+            w = get_wrapper()
             providers = {}
-            for name, config in wrapper.api.PROVIDERS.items():
-                key_exists = bool(wrapper.api.get_key(name))
+            for name, config in w.api.PROVIDERS.items():
+                key_exists = bool(w.api.get_key(name))
                 providers[name] = {
                     "name": config["name"],
                     "configured": key_exists,
@@ -348,6 +388,20 @@ def create_interface():
     return demo
 
 
+def find_available_port(start_port=7860, max_port=7870):
+    """Find an available port in range."""
+    import socket
+    for port in range(start_port, max_port + 1):
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.bind(('127.0.0.1', port))
+            sock.close()
+            return port
+        except OSError:
+            continue
+    return None
+
+
 def main():
     """Launch web GUI."""
     print("=" * 60)
@@ -355,13 +409,22 @@ def main():
     print("=" * 60)
     print()
     print("Launching web interface...")
+    
+    # Find available port
+    port = find_available_port(7860, 7870)
+    if port is None:
+        print("❌ No available ports found (tried 7860-7870)")
+        print("Please close other applications using these ports.")
+        sys.exit(1)
+    
+    print(f"Using port: {port}")
     print("The browser will open automatically.")
     print()
     
     demo = create_interface()
     demo.launch(
         server_name="127.0.0.1",
-        server_port=7860,
+        server_port=port,
         share=False,
         show_error=True,
         quiet=False

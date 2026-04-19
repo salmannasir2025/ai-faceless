@@ -195,6 +195,81 @@ class APIManager:
             return {"error": "No LLM API key available"}
         return self.get_provider_config(brain)
     
+    def call_llm(self, provider: str, prompt: str, system_prompt: str = "") -> str:
+        """
+        Call an LLM provider and return the response.
+        
+        Args:
+            provider: Provider name (GEMINI, GROK, KIMI, etc.)
+            prompt: User prompt
+            system_prompt: Optional system instructions
+            
+        Returns:
+            Response text from the LLM
+            
+        Raises:
+            RuntimeError: If API call fails or no response
+        """
+        import requests
+        
+        provider = provider.upper()
+        cfg = self.get_provider_config(provider)
+        
+        if not cfg or not cfg.get("api_key"):
+            raise RuntimeError(f"No API key configured for {provider}")
+        
+        api_key = cfg["api_key"]
+        model = cfg["model"]
+        
+        try:
+            # Handle different provider APIs
+            if provider == "GEMINI":
+                url = f"{cfg['base_url']}/models/{model}:generateContent?key={api_key}"
+                payload = {
+                    "contents": [{"parts": [{"text": prompt}]}]
+                }
+                if system_prompt:
+                    payload["system_instruction"] = {"parts": [{"text": system_prompt}]}
+                
+                resp = requests.post(url, json=payload, timeout=60)
+                resp.raise_for_status()
+                data = resp.json()
+                
+                if "candidates" in data and len(data["candidates"]) > 0:
+                    return data["candidates"][0]["content"]["parts"][0]["text"]
+                raise RuntimeError("Empty response from Gemini")
+            
+            elif provider in ["PUTER", "GROK", "KIMI", "DEEPSEEK", "QIANWEN"]:
+                # OpenAI-compatible API
+                url = f"{cfg['base_url']}/chat/completions"
+                headers = {
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                }
+                payload = {
+                    "model": model,
+                    "messages": [
+                        {"role": "system", "content": system_prompt or "You are a helpful assistant."},
+                        {"role": "user", "content": prompt}
+                    ]
+                }
+                
+                resp = requests.post(url, headers=headers, json=payload, timeout=60)
+                resp.raise_for_status()
+                data = resp.json()
+                
+                if "choices" in data and len(data["choices"]) > 0:
+                    return data["choices"][0]["message"]["content"]
+                raise RuntimeError(f"Empty response from {provider}")
+            
+            else:
+                raise RuntimeError(f"Unsupported provider: {provider}")
+                
+        except requests.exceptions.RequestException as e:
+            raise RuntimeError(f"API call failed for {provider}: {e}")
+        except (KeyError, IndexError) as e:
+            raise RuntimeError(f"Invalid response format from {provider}: {e}")
+    
     def get_all_llm_providers(self) -> list:
         """Get list of configured LLM providers."""
         configured = []

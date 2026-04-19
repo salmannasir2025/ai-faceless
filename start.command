@@ -67,11 +67,35 @@ if ! $PYTHON_CMD -c "import tkinter" 2>/dev/null; then
         # Install gradio if needed
         if ! $PYTHON_CMD -c "import gradio" 2>/dev/null; then
             echo "${BLUE}📦 Installing web GUI dependencies...${NC}"
-            $PYTHON_CMD -m pip install gradio -q
+            
+            # Try installing with error handling
+            if ! $PYTHON_CMD -m pip install gradio -q 2>/dev/null; then
+                echo "${RED}❌ Failed to install gradio${NC}"
+                echo ""
+                echo "${YELLOW}Trying with --user flag...${NC}"
+                
+                if ! $PYTHON_CMD -m pip install --user gradio -q 2>/dev/null; then
+                    echo "${RED}❌ Gradio installation failed${NC}"
+                    echo ""
+                    echo "${YELLOW}Please install manually:${NC}"
+                    echo "  $PYTHON_CMD -m pip install gradio"
+                    read -p "Press Enter to exit..."
+                    exit 1
+                fi
+            fi
+            
+            # Verify installation
+            if ! $PYTHON_CMD -c "import gradio" 2>/dev/null; then
+                echo "${RED}❌ Gradio installation verification failed${NC}"
+                read -p "Press Enter to exit..."
+                exit 1
+            fi
+            
+            echo "${GREEN}✅ Gradio installed${NC}"
         fi
         
         # Launch web GUI
-        echo "${GREEN}� Launching Web GUI...${NC}"
+        echo "${GREEN}🚀 Launching Web GUI...${NC}"
         echo ""
         $PYTHON_CMD web_gui.py
         exit 0

@@ -59,11 +59,13 @@ class LedgerOrchestrator:
         self.prompt_callback = prompt_callback  # For GUI user prompts
         self.failover = failover_manager  # For auto-failover
         
-        # Initialize state
-        self.project_state = ProjectState()
-        self.project_state.set_metadata("channel", channel)
-        self.project_state.set_metadata("created_at", datetime.utcnow().isoformat())
-        self.project_state.set_metadata("stage", "initialized")
+        # Initialize state (project_id will be set when run_pipeline is called)
+        self.project_state = None
+        self._init_metadata = {
+            "channel": channel,
+            "created_at": datetime.utcnow().isoformat(),
+            "stage": "initialized"
+        }
         
         # Initialize agents
         self.scout = FinancialScout(api_manager)
@@ -137,7 +139,16 @@ class LedgerOrchestrator:
         """
         Main entry point. Runs full pipeline with checkpoint recovery.
         """
+        from core.project_state import ProjectState
+        
         project_id = f"ledger_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{topic[:20].replace(' ', '_')}"
+        
+        # Initialize ProjectState with required project_id
+        self.project_state = ProjectState(project_id=project_id)
+        
+        # Set initial metadata
+        for key, value in self._init_metadata.items():
+            self.project_state.set_metadata(key, value)
         self.project_state.set_metadata("project_id", project_id)
         self.project_state.set_metadata("topic", topic)
         self.project_state.set_metadata("style", style)
