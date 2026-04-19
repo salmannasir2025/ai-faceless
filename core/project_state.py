@@ -7,6 +7,7 @@ import portalocker
 from datetime import datetime
 from typing import Dict, Any, Optional
 from pathlib import Path
+from core.security_utils import safe_json_load, safe_json_save, sanitize_path, mask_sensitive_data
 
 
 class ProjectState:
@@ -18,7 +19,15 @@ class ProjectState:
     
     def __init__(self, project_id: str, state_file: str = None):
         self.project_id = project_id
-        self.state_file = state_file or f"output/{project_id}_state.json"
+        
+        # SECURITY: Sanitize project_id to prevent path traversal
+        safe_project_id = project_id.replace('..', '_').replace('/', '_').replace('\\', '_')
+        
+        if state_file:
+            # SECURITY: Sanitize custom state file path
+            self.state_file = sanitize_path(state_file, base_dir="output")
+        else:
+            self.state_file = f"output/{safe_project_id}_state.json"
         
         # Ensure output directory exists
         os.makedirs(os.path.dirname(self.state_file) or "output", exist_ok=True)
@@ -47,9 +56,10 @@ class ProjectState:
     def load(self):
         """Load state from file."""
         try:
-            with open(self.state_file, 'r') as f:
-                self.state = json.load(f)
-        except (json.JSONDecodeError, IOError):
+            # SECURITY: Use safe JSON loading with size limits
+            self.state = safe_json_load(self.state_file)
+        except Exception:
+            # If load fails, initialize new state
             self._init_new()
     
     def save(self):
@@ -57,14 +67,19 @@ class ProjectState:
         self.state["updated_at"] = datetime.now().isoformat()
         
         try:
-            # Use portalocker for safe file access
-            with portalocker.Lock(self.state_file, timeout=1, mode='w') as f:
-                json.dump(self.state, f, indent=2)
-        except portalocker.exceptions.LockException:
-            print(f"⚠️ Could not lock {self.state_file}, retrying...")
-            # Fallback: try again with basic file operations
-            with open(self.state_file, 'w') as f:
-                json.dump(self.state, f, indent=2)
+            # SECURITY: Use atomic JSON save
+            safe_json_save(self.state, self.state_file)
+        except Exception as e:
+            # SECURITY: Mask any sensitive data in error
+            safe_error = mask_sensitive_data(str(e))
+            print(f"⚠️ Could not save state: {safe_error}")
+            # Fallback: try with portalocker
+            try:
+                with portalocker.Lock(self.state_file, timeout=1, mode='w') as f:
+                    json.dump(self.state, f, indent=2)
+            except Exception as e2:
+                safe_error2 = mask_sensitive_data(str(e2))
+                print(f"⚠️ Lock fallback failed: {safe_error2}")
     
     # === Status Management ===
     
@@ -85,9 +100,11 @@ class ProjectState:
     
     def add_error(self, error: str):
         """Add an error message."""
+        # SECURITY: Mask any sensitive data in error messages
+        safe_error = mask_sensitive_data(error)
         self.state["errors"].append({
             "timestamp": datetime.now().isoformat(),
-            "error": error
+            "error": safe_error
         })
         self.save()
     

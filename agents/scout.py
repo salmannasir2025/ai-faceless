@@ -12,6 +12,8 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 import requests
 import feedparser
+import time
+from core.security_utils import mask_sensitive_data
 
 class FinancialScout:
     """
@@ -26,10 +28,56 @@ class FinancialScout:
             "User-Agent": "TheLedgerBot/1.0 (Documentary Research; contact@yourdomain.com)"
         })
         
+        # SECURITY: Enable SSL verification (default, but explicit for clarity)
+        self.session.verify = True
+        
+        # Rate limiting: Track last request times per domain
+        self._last_request_time = {}
+        self._min_request_interval = 1.0  # Minimum 1 second between requests to same domain
+        
         # Source endpoints
         self.SEC_RSS = "https://www.sec.gov/cgi/browse-edgar?action=getcurrent&owner=include&start=0&count=40&output=atom"
         self.COURTLISTENER_BASE = "https://www.courtlistener.com/api/rest/v3"
         self.TRENDS_API = None  # Would need SERP API or manual scrape; using RSS fallback
+    
+    def _rate_limited_request(self, method, url, **kwargs):
+        """
+        Make a rate-limited request to prevent hammering APIs.
+        
+        Args:
+            method: 'get', 'post', etc.
+            url: Request URL
+            **kwargs: Additional request arguments
+            
+        Returns:
+            Response object
+        """
+        # Extract domain for rate limiting
+        from urllib.parse import urlparse
+        domain = urlparse(url).netloc
+        
+        # Check if we need to wait
+        if domain in self._last_request_time:
+            elapsed = time.time() - self._last_request_time[domain]
+            if elapsed < self._min_request_interval:
+                sleep_time = self._min_request_interval - elapsed
+                time.sleep(sleep_time)
+        
+        # Make the request
+        request_func = getattr(self.session, method.lower())
+        
+        # SECURITY: Ensure verify=True and reasonable timeout
+        kwargs.setdefault('verify', True)
+        kwargs.setdefault('timeout', 15)
+        
+        try:
+            resp = request_func(url, **kwargs)
+            self._last_request_time[domain] = time.time()
+            return resp
+        except requests.exceptions.RequestException as e:
+            # SECURITY: Mask sensitive data in error
+            safe_error = mask_sensitive_data(str(e))
+            raise requests.exceptions.RequestException(f"Request failed: {safe_error}")
     
     def research(self, topic: str, depth: str = "deep") -> Dict:
         """
@@ -87,7 +135,7 @@ class FinancialScout:
         
         try:
             # Get current enforcement RSS
-            resp = self.session.get(self.SEC_RSS, timeout=15)
+            resp = self._rate_limited_request('get', self.SEC_RSS)
             if resp.status_code != 200:
                 return results
             
@@ -131,10 +179,10 @@ class FinancialScout:
                 "description__contains": topic.split()[0],  # First keyword
                 "ordering": "-date_created"
             }
-            resp = self.session.get(
+            resp = self._rate_limited_request(
+                'get',
                 f"{self.COURTLISTENER_BASE}/dockets/",
-                params=params,
-                timeout=15
+                params=params
             )
             
             if resp.status_code == 200:
@@ -156,10 +204,10 @@ class FinancialScout:
                 "type": "o",
                 "ordering": "-dateFiled"
             }
-            resp_op = self.session.get(
+            resp_op = self._rate_limited_request(
+                'get',
                 f"{self.COURTLISTENER_BASE}/search/",
-                params=opinion_params,
-                timeout=15
+                params=opinion_params
             )
             if resp_op.status_code == 200:
                 data_op = resp_op.json()
@@ -194,7 +242,7 @@ class FinancialScout:
         
         for feed_url in feeds:
             try:
-                resp = self.session.get(feed_url, timeout=10)
+                resp = self._rate_limited_request('get', feed_url)
                 feed = feedparser.parse(resp.text)
                 
                 for entry in feed.entries[:10]:
@@ -228,7 +276,7 @@ class FinancialScout:
             try:
                 # Fetch the actual document text if possible
                 url = doc["url"]
-                resp = self.session.get(url, timeout=10)
+                resp = self._rate_limited_request('get', url)
                 
                 if resp.status_code == 200:
                     text = resp.text
@@ -296,9 +344,9 @@ class FinancialScout:
         # If topic involves crypto, get BTC/ETH price context
         if any(kw in topic.lower() for kw in ["crypto", "bitcoin", "ftx", "exchange"]):
             try:
-                resp = self.session.get(
-                    "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd",
-                    timeout=10
+                resp = self._rate_limited_request(
+                    'get',
+                    "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd"
                 )
                 if resp.status_code == 200:
                     context["crypto_prices"] = resp.json()

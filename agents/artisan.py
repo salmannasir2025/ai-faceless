@@ -18,6 +18,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 from core.english_engine import EnglishEngine
+from core.security_utils import secure_subprocess_run, validate_filename
 
 
 class DocumentaryArtisan:
@@ -193,7 +194,7 @@ class DocumentaryArtisan:
         ]
         
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            result = secure_subprocess_run(cmd, timeout=300)
             if result.returncode != 0:
                 print(f"FFmpeg stderr: {result.stderr}")
                 raise RuntimeError(f"FFmpeg failed: {result.returncode}")
@@ -231,7 +232,7 @@ class DocumentaryArtisan:
             output_path
         ]
         
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = secure_subprocess_run(cmd)
         
         # Cleanup
         if os.path.exists(end_card_path):
@@ -310,7 +311,7 @@ class DocumentaryArtisan:
             output_path
         ]
         
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = secure_subprocess_run(cmd)
         
         # Cleanup blank image
         if 'blank_path' in locals() and os.path.exists(blank_path):
@@ -326,9 +327,9 @@ class DocumentaryArtisan:
         try:
             cmd = ["ffprobe", "-v", "error", "-show_entries", "format=duration", 
                    "-of", "default=noprint_wrappers=1:nokey=1", audio_path]
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+            result = secure_subprocess_run(cmd, timeout=10)
             return float(result.stdout.strip() or 300)  # Default 5 min
-        except:
+        except Exception:
             return 300
     
     def _get_video_duration(self, video_path: str) -> float:
@@ -336,9 +337,9 @@ class DocumentaryArtisan:
         try:
             cmd = ["ffprobe", "-v", "error", "-show_entries", "format=duration", 
                    "-of", "default=noprint_wrappers=1:nokey=1", video_path]
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+            result = secure_subprocess_run(cmd, timeout=10)
             return float(result.stdout.strip() or 0)
-        except:
+        except Exception:
             return 0
     
     def apply_lut(self, video_path: str, output_path: str, preset: str = "ledger_teal_orange"):
@@ -363,7 +364,7 @@ class DocumentaryArtisan:
             output_path
         ]
         
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = secure_subprocess_run(cmd)
         if result.returncode == 0:
             return output_path
         else:

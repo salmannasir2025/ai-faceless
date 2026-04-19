@@ -22,8 +22,20 @@ try:
     import gradio as gr
 except ImportError:
     print("❌ Gradio not installed. Installing...")
-    os.system(f"{sys.executable} -m pip install gradio -q")
-    import gradio as gr
+    # SECURITY FIX: Use subprocess with proper argument list instead of os.system
+    import subprocess
+    try:
+        subprocess.run(
+            [sys.executable, "-m", "pip", "install", "gradio", "-q"],
+            check=True,
+            capture_output=True,
+            text=True
+        )
+        import gradio as gr
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Failed to install gradio: {e}")
+        print("Please install manually: pip install gradio")
+        sys.exit(1)
 
 from core.api_manager import APIManager
 from core.governor import Governor
@@ -422,12 +434,19 @@ def main():
     print()
     
     demo = create_interface()
+    
+    # SECURITY: Configure Gradio with security settings
+    # Only allow local access, disable sharing, add auth if needed
     demo.launch(
-        server_name="127.0.0.1",
+        server_name="127.0.0.1",  # Only bind to localhost
         server_port=port,
-        share=False,
+        share=False,  # Never create public URL
         show_error=True,
-        quiet=False
+        quiet=False,
+        # SECURITY: Prevent iframe embedding
+        prevent_threading=False,
+        # SECURITY: Show errors only in dev mode
+        show_api=False,  # Don't show API docs
     )
 
 

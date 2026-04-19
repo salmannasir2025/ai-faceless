@@ -20,6 +20,7 @@ from agents.orchestrator import LedgerOrchestrator
 
 # Utilities
 from legal.safety_checker import LegalSafetyChecker
+from core.security_utils import validate_topic, validate_enum, sanitize_path, InputValidationError
 
 
 def setup_directories():
@@ -135,6 +136,27 @@ def main():
     validate_environment()
     
     args = parse_arguments()
+    
+    # SECURITY: Validate user inputs
+    try:
+        # Validate topic
+        if args.topic:
+            args.topic = validate_topic(args.topic)
+        
+        # Validate enum values
+        args.style = validate_enum(args.style, ["documentary", "news", "breaking"])
+        args.language = validate_enum(args.language, ["en", "ur"])
+        args.channel = validate_enum(args.channel, ["ledger", "signal"])
+        args.voice = validate_enum(args.voice, ["edge_tts", "elevenlabs", "pre_recorded"])
+        
+        # Validate audio path if provided
+        if args.audio_path:
+            args.audio_path = sanitize_path(args.audio_path)
+            
+    except InputValidationError as e:
+        print(f"❌ Input validation failed: {e}")
+        sys.exit(1)
+    
     print_config(args)
     
     # Initialize core systems

@@ -3,6 +3,7 @@ import edge_tts
 import asyncio
 import subprocess
 from pathlib import Path
+from core.security_utils import secure_subprocess_run
 
 class VoiceCloneManager:
     """Manages cloned voice generation and fallback TTS."""
@@ -25,16 +26,16 @@ class VoiceCloneManager:
             "-ar", "44100", "-ac", "2",
             output_path
         ]
-        subprocess.run(cmd, check=True, capture_output=True)
+        secure_subprocess_run(cmd)
         os.remove(raw)
         
         # Add reverb
         reverb = output_path.replace(".wav", "_final.wav")
-        subprocess.run([
+        secure_subprocess_run([
             "ffmpeg", "-y", "-i", output_path,
             "-af", "aecho=0.8:0.9:1000:0.3",
             reverb
-        ], check=True, capture_output=True)
+        ])
         
         return reverb
     

@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 from cryptography.fernet import Fernet
 from dotenv import load_dotenv
+from core.security_utils import mask_sensitive_data
 
 
 class APIManager:
@@ -266,9 +267,13 @@ class APIManager:
                 raise RuntimeError(f"Unsupported provider: {provider}")
                 
         except requests.exceptions.RequestException as e:
-            raise RuntimeError(f"API call failed for {provider}: {e}")
+            # SECURITY: Mask any sensitive data in error messages
+            safe_error = mask_sensitive_data(str(e))
+            raise RuntimeError(f"API call failed for {provider}: {safe_error}")
         except (KeyError, IndexError) as e:
-            raise RuntimeError(f"Invalid response format from {provider}: {e}")
+            # SECURITY: Mask any sensitive data in error messages
+            safe_error = mask_sensitive_data(str(e))
+            raise RuntimeError(f"Invalid response format from {provider}: {safe_error}")
     
     def get_all_llm_providers(self) -> list:
         """Get list of configured LLM providers."""
