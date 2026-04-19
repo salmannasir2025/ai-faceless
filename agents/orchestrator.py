@@ -50,10 +50,14 @@ class LedgerOrchestrator:
         "failed"
     ]
     
-    def __init__(self, api_manager: APIManager, governor: Governor, channel: str = "ledger"):
+    def __init__(self, api_manager: APIManager, governor: Governor, channel: str = "ledger",
+                 progress_callback=None, prompt_callback=None, failover_manager=None):
         self.api = api_manager
         self.gov = governor
         self.channel = channel  # "ledger" or "signal"
+        self.progress_callback = progress_callback  # For GUI updates
+        self.prompt_callback = prompt_callback  # For GUI user prompts
+        self.failover = failover_manager  # For auto-failover
         
         # Initialize state
         self.project_state = ProjectState()
@@ -85,6 +89,49 @@ class LedgerOrchestrator:
             "trezor": os.getenv("AFFILIATE_TREZOR", "https://trezor.io/?a=YOUR_CODE"),
             "nordvpn": os.getenv("AFFILIATE_NORDVPN", "https://nordvpn.com/YOUR_CODE")
         }
+    
+    def _send_progress(self, stage: str, status: str, message: str = ""):
+        """Send progress update to callback if available."""
+        if self.progress_callback:
+            self.progress_callback(stage, status, message)
+    
+    def _request_prompt(self, question: str, options: List[str]) -> str:
+        """Request user input via callback if available, otherwise auto-approve."""
+        if self.prompt_callback:
+            return self.prompt_callback(question, options)
+        # Default behavior for CLI: auto-approve with first option
+        return options[0] if options else "yes"
+    
+    def _get_ai_response(self, prompt: str, system_prompt: str = "") -> str:
+        """Get AI response with auto-failover support."""
+        last_error = None
+        
+        # Try available providers
+        for attempt in range(3):
+            provider = self.failover.get_next_provider() if self.failover else None
+            if not provider:
+                # Fallback: try to use any configured provider directly
+                for p in ["GEMINI", "PUTER", "GROK", "KIMI"]:
+                    if self.api.get_key(p):
+                        provider = p
+                        break
+            
+            if not provider:
+                raise RuntimeError("No AI providers available. Please configure API keys.")
+            
+            try:
+                # Try to get response from this provider
+                response = self.api.call_llm(provider, prompt, system_prompt)
+                if response:
+                    return response
+            except Exception as e:
+                last_error = e
+                if self.failover:
+                    self.failover.mark_failed(provider, str(e))
+                continue
+        
+        # All attempts failed
+        raise RuntimeError(f"All AI providers failed. Last error: {last_error}")
     
     def run_pipeline(self, topic: str, style: str = "documentary", publish: bool = False) -> Dict:
         """
@@ -402,11 +449,35 @@ class LedgerOrchestrator:
     
     # ───────────────── HELPERS ─────────────────
     
+    # Map internal stages to GUI stage names
+    STAGE_MAP = {
+        "initialized": "init",
+        "scouting": "scout",
+        "scripting": "scribe",
+        "verifying": "verifier",
+        "legal_check": "legal",
+        "voice_generation": "voice",
+        "visual_production": "artisan",
+        "assembly": "artisan",
+        "publishing": "complete",
+        "completed": "complete",
+        "failed": "error"
+    }
+    
     def _transition(self, stage: str):
         if stage not in self.STAGES:
             raise ValueError(f"Invalid stage: {stage}")
         self.project_state.set_metadata("stage", stage)
         print(f"\n➡️  STAGE: {stage.upper()}")
+        
+        # Send progress to GUI
+        gui_stage = self.STAGE_MAP.get(stage, stage)
+        self._send_progress(gui_stage, "running", f"Stage: {stage.replace('_', ' ').title()}")
+    
+    def _complete_stage(self, stage: str):
+        """Mark a stage as complete."""
+        gui_stage = self.STAGE_MAP.get(stage, stage)
+        self._send_progress(gui_stage, "complete", f"Completed: {stage.replace('_', ' ').title()}")
     
     def _fail(self, reason: str) -> Dict:
         self._transition("failed")
