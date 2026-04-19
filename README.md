@@ -6,6 +6,12 @@
 
 An automated content creation pipeline for producing documentary-style YouTube videos about financial crimes, fraud cases, and corruption investigations. The system uses a multi-agent architecture to research, script, verify, produce, and publish videos while maintaining strict legal compliance.
 
+### Target Audience
+
+**Primary**: USA, Europe, and English-speaking audiences  
+**Default Language**: English  
+**Future Expansion**: Urdu-speaking markets (optional)
+
 ## Architecture
 
 The system follows a state-driven pipeline with these stages:
@@ -28,6 +34,7 @@ SCOUT → SCRIBE → VERIFY → LEGAL_GATE → VOICE → ARTISAN → PUBLISH
 - **Governor** (`core/governor.py`) - Hardware optimization for rendering
 - **APIManager** (`core/api_manager.py`) - Manages API keys for multiple LLM providers
 - **ProjectState** (`core/project_state.py`) - State machine for pipeline tracking
+- **EnglishEngine** (`core/english_engine.py`) - Text rendering for English content (default)
 
 ### Supporting Modules
 
@@ -53,7 +60,8 @@ ai-faceless-channel-automation/
 │   ├── governor.py           # Hardware profiler
 │   ├── api_manager.py        # API key management
 │   ├── project_state.py      # State persistence
-│   └── urdu_engine.py        # Scroll video renderer (legacy)
+│   ├── english_engine.py     # English text renderer (default)
+│   └── urdu_engine.py        # Urdu text renderer (optional, future expansion)
 ├── graphics/
 │   ├── __init__.py
 │   ├── doc_graphics.py       # Evidence card generator
@@ -116,14 +124,29 @@ AFFILIATE_BYBIT=https://www.bybit.com/invite?ref=YOUR_CODE
 
 ## Usage
 
+### Language Settings
+
+**Default: English (en)** - For USA, Europe, and English-speaking audiences
+
+```bash
+# Create English documentary (default)
+python main.py --topic "Wirecard scandal" --language en
+
+# Future: Urdu support (for expansion to Urdu-speaking markets)
+python main.py --topic "Wirecard scandal" --language ur
+```
+
 ### Run Full Pipeline
 
 ```bash
-# Create a documentary about a topic
+# Create a documentary about a topic (English default)
 python main.py --topic "Wirecard scandal" --style documentary
 
 # With mock/test mode (no API calls)
 python main.py --topic "Test case" --mock
+
+# With specific language setting
+python main.py --topic "FTX collapse" --language en --style documentary
 ```
 
 ### Individual Stages

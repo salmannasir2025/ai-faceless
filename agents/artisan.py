@@ -3,6 +3,10 @@
 DOCUMENTARY ARTISAN
 Renders the final documentary video with evidence graphics and affiliate watermarks.
 Extends original VideoAgent with documentary-specific assembly.
+
+Language Support:
+- English (default) - For USA/Europe audiences
+- Urdu (optional) - For future expansion to Urdu-speaking markets
 """
 
 import json
@@ -13,9 +17,15 @@ from typing import Optional, Tuple, List, Dict
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
+from core.english_engine import EnglishEngine
+
 
 class DocumentaryArtisan:
-    """Agent that assembles documentary videos with professional LUT and overlays."""
+    """Agent that assembles documentary videos with professional LUT and overlays.
+    
+    Default language: English (en)
+    Target audience: USA, Europe, English-speaking markets
+    """
     
     # Documentary color grading - Teal/Orange LUT
     LUT_PRESETS = {
@@ -42,8 +52,25 @@ class DocumentaryArtisan:
         }
     }
     
-    def __init__(self, governor):
+    # Supported languages
+    LANGUAGES = {
+        "en": {
+            "name": "English",
+            "engine": "EnglishEngine",
+            "default": True,
+            "target_regions": ["USA", "UK", "Canada", "Australia", "Europe"]
+        },
+        "ur": {
+            "name": "Urdu",
+            "engine": "UrduEngine",
+            "default": False,
+            "target_regions": ["Pakistan", "India"]
+        }
+    }
+    
+    def __init__(self, governor, language: str = "en"):
         self.governor = governor
+        self.language = language.lower()
         self.render_config = {
             "resolution": (1920, 1080),  # 16:9 horizontal documentary format
             "fps": 30,
@@ -53,6 +80,27 @@ class DocumentaryArtisan:
             "audio_bitrate": "192k"
         }
         self.ffmpeg_params = governor.get_ffmpeg_params() if hasattr(governor, 'get_ffmpeg_params') else ["-c:v", "libx264", "-preset", "slow"]
+        
+        # Initialize text rendering engine based on language
+        self.text_engine = self._init_text_engine()
+        
+        print(f"🎬 Documentary Artisan initialized")
+        print(f"   Language: {self.LANGUAGES.get(self.language, {}).get('name', 'English')}")
+        print(f"   Engine: {self.text_engine.__class__.__name__}")
+    
+    def _init_text_engine(self):
+        """Initialize text rendering engine based on language setting."""
+        if self.language == "ur":
+            # Lazy import - only load if needed
+            try:
+                from core.urdu_engine import UrduEngine
+                return UrduEngine()
+            except ImportError:
+                print("⚠️  UrduEngine not available, falling back to EnglishEngine")
+                return EnglishEngine()
+        else:
+            # Default to English
+            return EnglishEngine(theme="ledger")
     
     def assemble_documentary(self, audio_path: str, image_sequence: List[Dict], output_path: str, 
                             lut_preset: str = "ledger_teal_orange", affiliate_links: Dict = None) -> str:

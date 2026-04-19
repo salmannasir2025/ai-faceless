@@ -100,6 +100,11 @@ Examples:
         help="Script style tone"
     )
     
+    parser.add_argument(
+        "--language", choices=["en", "ur"], default="en",
+        help="Video language: en (English, default) or ur (Urdu). Channel targets USA/Europe English speakers by default."
+    )
+    
     return parser.parse_args()
 
 
@@ -112,10 +117,12 @@ def print_banner():
 
 
 def print_config(args):
+    lang_display = f"{args.language.upper()} (English)" if args.language == "en" else f"{args.language.upper()} (Urdu)"
     print("CONFIGURATION:")
     print(f"  Topic:      {args.topic}")
     print(f"  Channel:    {args.channel}")
     print(f"  Style:      {args.style}")
+    print(f"  Language:   {lang_display}")
     print(f"  Voice:      {args.voice}")
     print(f"  Affiliate:  {'Disabled' if args.no_affiliate else 'Enabled'}")
     print(f"  Publish:    {'Yes (PRIVATE)' if args.publish else 'No'}")
@@ -147,6 +154,7 @@ def main():
         # Override settings from CLI
         orchestrator.project_state.set_metadata("voice_source", args.voice)
         orchestrator.project_state.set_metadata("affiliate_inject", not args.no_affiliate)
+        orchestrator.project_state.set_metadata("language", args.language)
         
         if args.voice == "pre_recorded" and args.audio_path:
             if not os.path.exists(args.audio_path):
