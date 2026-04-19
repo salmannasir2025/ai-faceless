@@ -170,7 +170,8 @@ class DocumentaryArtisan:
                 f.write(f"duration {duration}\n")
             # Last frame needs duration too
             if image_sequence:
-                f.write(f"file '{image_sequence[-1]['path'].replace("'", "'\\''")}'\n")
+                last_path = image_sequence[-1]['path'].replace("'", "'\\''")
+                f.write(f"file '{last_path}'\n")
         
         # Get LUT params
         lut_params = self.LUT_PRESETS.get(lut_preset, self.LUT_PRESETS["ledger_teal_orange"])
