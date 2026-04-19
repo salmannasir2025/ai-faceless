@@ -25,3 +25,6 @@ elevenlabs>=0.2.0
 # Development
 pytest>=7.0.0
 black>=22.0.0
+
+# Web GUI (optional - if tkinter not available)
+gradio>=4.0.0

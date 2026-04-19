@@ -2,7 +2,12 @@
 # THE LEDGER - macOS Launcher
 # One-click startup with dependency checking
 
-cd "$(dirname "$0")"
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
+
+# Suppress zsh compinit warnings
+export ZSH_DISABLE_COMPFIX=true
 
 # Colors for output
 RED='\033[0;31m'
@@ -19,27 +24,68 @@ echo "╚═══════════════════════�
 echo "${NC}"
 echo ""
 
-# Check Python 3
+# Check Python 3 (prefer system Python with tkinter)
 printf "${BLUE}🔍 Checking Python 3...${NC} "
-if ! command -v python3 &> /dev/null; then
+
+# Try system Python first (usually has tkinter)
+if [ -x "/usr/bin/python3" ]; then
+    PYTHON_CMD="/usr/bin/python3"
+elif command -v python3 &> /dev/null; then
+    PYTHON_CMD="python3"
+else
     echo "${RED}❌ Not found${NC}"
     echo ""
     echo "${RED}Error: Python 3 is required but not installed.${NC}"
     echo "Please install Python 3 from https://python.org"
-    echo "Or run: brew install python3"
     read -p "Press Enter to exit..."
     exit 1
 fi
 
-PYTHON_VERSION=$(python3 --version 2>&1)
+PYTHON_VERSION=$($PYTHON_CMD --version 2>&1)
 echo "${GREEN}✅ $PYTHON_VERSION${NC}"
+
+# Check tkinter
+printf "${BLUE}🔍 Checking tkinter (GUI library)...${NC} "
+if ! $PYTHON_CMD -c "import tkinter" 2>/dev/null; then
+    echo "${YELLOW}⚠️  tkinter not available${NC}"
+    echo ""
+    echo "${YELLOW}Installing python-tk...${NC}"
+    
+    # Try to install tkinter
+    if command -v brew &> /dev/null; then
+        brew install python-tk@3.11 2>/dev/null || brew install python-tk 2>/dev/null || true
+    fi
+    
+    # Check again
+    if ! $PYTHON_CMD -c "import tkinter" 2>/dev/null; then
+        echo ""
+        echo "${YELLOW}⚠️  tkinter not available${NC}"
+        echo ""
+        echo "${BLUE}🔄 Using Web GUI instead (no tkinter needed)...${NC}"
+        echo ""
+        
+        # Install gradio if needed
+        if ! $PYTHON_CMD -c "import gradio" 2>/dev/null; then
+            echo "${BLUE}📦 Installing web GUI dependencies...${NC}"
+            $PYTHON_CMD -m pip install gradio -q
+        fi
+        
+        # Launch web GUI
+        echo "${GREEN}� Launching Web GUI...${NC}"
+        echo ""
+        $PYTHON_CMD web_gui.py
+        exit 0
+    fi
+else
+    echo "${GREEN}✅ OK${NC}"
+fi
 
 # Check pip
 printf "${BLUE}🔍 Checking pip...${NC} "
-if ! python3 -m pip --version &> /dev/null; then
+if ! $PYTHON_CMD -m pip --version &> /dev/null; then
     echo "${RED}❌ Not found${NC}"
     echo "pip is required. Installing..."
-    python3 -m ensurepip --upgrade 2>/dev/null || {
+    $PYTHON_CMD -m ensurepip --upgrade 2>/dev/null || {
         echo "${RED}Failed to install pip${NC}"
         read -p "Press Enter to exit..."
         exit 1
@@ -52,7 +98,7 @@ VENV_DIR="venv"
 if [ ! -d "$VENV_DIR" ]; then
     echo ""
     echo "${YELLOW}📦 Creating virtual environment...${NC}"
-    python3 -m venv "$VENV_DIR"
+    $PYTHON_CMD -m venv "$VENV_DIR"
     if [ $? -ne 0 ]; then
         echo "${RED}❌ Failed to create virtual environment${NC}"
         read -p "Press Enter to exit..."
@@ -68,7 +114,7 @@ source "$VENV_DIR/bin/activate"
 
 # Check dependencies
 printf "${BLUE}🔍 Checking dependencies...${NC} "
-python3 -c "
+$PYTHON_CMD -c "
 import sys
 required = ['psutil', 'PIL', 'moviepy', 'requests', 'dotenv', 'cryptography', 'portalocker']
 missing = []
@@ -97,8 +143,8 @@ if [ $? -ne 0 ]; then
     echo ""
     
     # Install with progress indication
-    python3 -m pip install --upgrade pip
-    python3 -m pip install -r requirements.txt 2>&1 | while read line; do
+    $PYTHON_CMD -m pip install --upgrade pip
+    $PYTHON_CMD -m pip install -r requirements.txt 2>&1 | while read line; do
         if [[ $line == *"Successfully installed"* ]] || [[ $line == *"Requirement already satisfied"* ]]; then
             echo "${GREEN}✓${NC} $line"
         elif [[ $line == *"Collecting"* ]]; then
@@ -107,7 +153,7 @@ if [ $? -ne 0 ]; then
     done
     
     # Check if installation succeeded
-    python3 -c "
+    $PYTHON_CMD -c "
 import sys
 try:
     import psutil, PIL, moviepy, requests, dotenv, cryptography, portalocker
@@ -151,7 +197,7 @@ echo ""
 # Launch the GUI
 echo "${BLUE}🎬 Launching The Ledger GUI...${NC}"
 echo ""
-python3 app.py
+$PYTHON_CMD app.py
 
 # If GUI crashes, show error
 if [ $? -ne 0 ]; then
