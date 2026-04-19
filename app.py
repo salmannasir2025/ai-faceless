@@ -20,7 +20,7 @@ import time
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from core.api_manager import APIManager, AIFailoverManager
+from core.api_manager import APIManager
 from core.governor import Governor
 from core.project_state import ProjectState
 from agents.orchestrator import LedgerOrchestrator
