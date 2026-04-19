@@ -11,7 +11,7 @@ credentials.json
 *.pem
 *.p12
 
-# Audit Reports (DO NOT COMMIT TO GITHUB)
+# Audit Reports and Documentation (DO NOT COMMIT TO GITHUB)
 AUDIT_*.md
 AUDIT_*.txt
 AUDIT_*.pdf
@@ -23,9 +23,11 @@ REMEDIATION_CHECKLIST.md
 IMPROVEMENTS.md
 INDEX.md
 QUICK_START.md
+README_GUI_SETUP.md
 *_AUDIT*.md
 audit_by_*.md
 AUDIT_BY_*.md
+CODE_REVIEW_*.md
 
 # Progress and State Files (Sensitive)
 progress.md
