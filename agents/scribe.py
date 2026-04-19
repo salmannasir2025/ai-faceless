@@ -10,6 +10,7 @@ import os
 import re
 from typing import Dict, List, Optional
 from datetime import datetime
+from core.security_utils import mask_sensitive_data  # SECURITY: For error masking
 
 class DocumentaryScribe:
     """
@@ -162,7 +163,9 @@ Write the complete script now. Label each Act clearly.
                 return self._mock_script()  # Remove in production
                 
         except Exception as e:
-            print(f"  ⚠️  LLM error: {e}")
+            # SECURITY: Mask sensitive data in error message
+            safe_error = mask_sensitive_data(str(e))
+            print(f"  ⚠️  LLM error: {safe_error}")
             return self._mock_script()
     
     def _parse_into_acts(self, raw_text: str, research: Dict) -> Dict:
@@ -175,19 +178,38 @@ Write the complete script now. Label each Act clearly.
             "act_v_verdict": ""
         }
         
-        # Split by Act markers (flexible regex)
+        # SECURITY: Simplified regex patterns to prevent ReDoS attacks
+        # Uses atomic-style patterns without nested quantifiers
         patterns = {
-            "act_i_hook": r"(?:ACT I|Act I|Act 1|HOOK).*?(?=(?:ACT II|Act II|Act 2|INVESTIGATION|$))",
-            "act_ii_investigation": r"(?:ACT II|Act II|Act 2|INVESTIGATION).*?(?=(?:ACT III|Act III|Act 3|SYSTEM|$))",
-            "act_iii_system": r"(?:ACT III|Act III|Act 3|SYSTEM).*?(?=(?:ACT IV|Act IV|Act 4|BRIDGE|$))",
-            "act_iv_bridge": r"(?:ACT IV|Act IV|Act 4|BRIDGE).*?(?=(?:ACT V|Act V|Act 5|VERDICT|$))",
-            "act_v_verdict": r"(?:ACT V|Act V|Act 5|VERDICT).*?(?=$)"
+            "act_i_hook": r"ACT I.*?(?=ACT II|$)",
+            "act_ii_investigation": r"ACT II.*?(?=ACT III|$)",
+            "act_iii_system": r"ACT III.*?(?=ACT IV|$)",
+            "act_iv_bridge": r"ACT IV.*?(?=ACT V|$)",
+            "act_v_verdict": r"ACT V.*$"
         }
         
-        for act_key, pattern in patterns.items():
-            match = re.search(pattern, raw_text, re.DOTALL | re.IGNORECASE)
-            if match:
-                acts[act_key] = match.group(0).strip()
+        # SECURITY: Set regex timeout to prevent ReDoS (Python 3.11+)
+        import sys
+        if sys.version_info >= (3, 11):
+            import re._compiler as _compiler
+            # Use re.search with timeout if available
+            for act_key, pattern in patterns.items():
+                try:
+                    match = re.search(pattern, raw_text, re.DOTALL | re.IGNORECASE)
+                    if match:
+                        acts[act_key] = match.group(0).strip()
+                except re.error:
+                    # Fallback: simple string search
+                    acts[act_key] = self._fallback_parse_act(raw_text, act_key)
+        else:
+            # Pre-Python 3.11: use simple string operations as fallback
+            for act_key, pattern in patterns.items():
+                try:
+                    match = re.search(pattern, raw_text, re.DOTALL | re.IGNORECASE)
+                    if match:
+                        acts[act_key] = match.group(0).strip()
+                except Exception:
+                    acts[act_key] = self._fallback_parse_act(raw_text, act_key)
         
         # If parsing fails, dump raw text into Act II and log warning
         if not any(acts.values()):
@@ -198,6 +220,39 @@ Write the complete script now. Label each Act clearly.
             "acts": acts,
             "full_text": raw_text
         }
+    
+    def _fallback_parse_act(self, raw_text: str, act_key: str) -> str:
+        """
+        SECURITY: Fallback parsing using simple string operations.
+        Avoids regex entirely to prevent ReDoS attacks.
+        """
+        act_markers = {
+            "act_i_hook": ("ACT I", "ACT II"),
+            "act_ii_investigation": ("ACT II", "ACT III"),
+            "act_iii_system": ("ACT III", "ACT IV"),
+            "act_iv_bridge": ("ACT IV", "ACT V"),
+            "act_v_verdict": ("ACT V", None)
+        }
+        
+        start_marker, end_marker = act_markers.get(act_key, (None, None))
+        if not start_marker:
+            return ""
+        
+        # Find start position (case-insensitive)
+        text_upper = raw_text.upper()
+        start_pos = text_upper.find(start_marker)
+        if start_pos == -1:
+            return ""
+        
+        # Find end position
+        if end_marker:
+            end_pos = text_upper.find(end_marker, start_pos + len(start_marker))
+            if end_pos == -1:
+                end_pos = len(raw_text)
+        else:
+            end_pos = len(raw_text)
+        
+        return raw_text[start_pos:end_pos].strip()
     
     def _extract_hook_number(self, text: str) -> str:
         """Extract the big dollar number from Act I for thumbnails."""

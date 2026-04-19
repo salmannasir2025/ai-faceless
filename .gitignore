@@ -1,0 +1,97 @@
+# Security and Environment
+.env
+.env.local
+.env.*
+!.env.example
+token.json
+token_*.json
+client_secrets.json
+credentials.json
+*.key
+*.pem
+*.p12
+
+# Audit Reports (DO NOT COMMIT TO GITHUB)
+AUDIT_*.md
+AUDIT_*.txt
+AUDIT_*.pdf
+AUDIT_REPORT.md
+AUDIT_SUMMARY.txt
+AUDIT_DELIVERY.md
+DELIVERY_SUMMARY.txt
+REMEDIATION_CHECKLIST.md
+IMPROVEMENTS.md
+INDEX.md
+QUICK_START.md
+*_AUDIT*.md
+audit_by_*.md
+AUDIT_BY_*.md
+
+# Progress and State Files (Sensitive)
+progress.md
+progress_*.md
+*_progress.md
+states/
+*_state.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environments
+venv/
+env/
+ENV/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+logs/
+*.log
+
+# Output (Generated Content)
+output/
+output_*/
+*.mp4
+*.wav
+*.mp3
+*.png
+*.jpg
+*.webm
+
+# Test Coverage
+.coverage
+htmlcov/
+.tox/
+.pytest_cache/
+
+# Temporary Files
+tmp/
+temp/
+*.tmp
+*.temp

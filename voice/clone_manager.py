@@ -60,8 +60,14 @@ class VoiceCloneManager:
             }
         }
         
-        resp = requests.post(url, json=payload, headers=headers)
+        resp = requests.post(url, json=payload, headers=headers, timeout=60)
         if resp.status_code == 200:
+            # SECURITY: Validate response size to prevent DoS (max 50MB for audio)
+            max_size = 50 * 1024 * 1024  # 50MB
+            content_size = len(resp.content)
+            if content_size > max_size:
+                raise RuntimeError(f"Response too large: {content_size} bytes (max {max_size})")
+            
             with open(output_path, "wb") as f:
                 f.write(resp.content)
             return output_path

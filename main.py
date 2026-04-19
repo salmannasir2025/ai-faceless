@@ -6,6 +6,7 @@ Financial Darkness Documentary Channel Automation v3.0
 
 import os
 import sys
+import json  # SECURITY FIX: Added missing json import
 import argparse
 import asyncio
 from datetime import datetime

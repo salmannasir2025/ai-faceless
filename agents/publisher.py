@@ -7,6 +7,7 @@ Handles synthetic content disclosure, affiliate injection, and policy compliance
 
 import os
 import sys
+import stat  # SECURITY: For file permission constants
 from typing import Dict, Optional
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
@@ -45,8 +46,10 @@ class AffiliatePublisher:
                 )
                 creds = flow.run_local_server(port=0)
             
+            # SECURITY: Write token with restrictive permissions (owner read/write only)
             with open("token.json", "w") as token:
                 token.write(creds.to_json())
+            os.chmod("token.json", stat.S_IRUSR | stat.S_IWUSR)  # 0o600 permissions
         
         return build("youtube", "v3", credentials=creds)
     
