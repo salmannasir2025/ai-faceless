@@ -148,7 +148,7 @@ def main():
         args.style = validate_enum(args.style, ["documentary", "news", "breaking"])
         args.language = validate_enum(args.language, ["en", "ur"])
         args.channel = validate_enum(args.channel, ["ledger", "signal"])
-        args.voice = validate_enum(args.voice, ["edge_tts", "elevenlabs", "pre_recorded"])
+        args.voice = validate_enum(args.voice, ["clone", "edge_tts", "pre_recorded"])
         
         # Validate audio path if provided
         if args.audio_path:
@@ -174,20 +174,21 @@ def main():
             dry_run=args.dry_run
         )
         
-        # Override settings from CLI
-        orchestrator.project_state.set_metadata("voice_source", args.voice)
-        orchestrator.project_state.set_metadata("affiliate_inject", not args.no_affiliate)
-        orchestrator.project_state.set_metadata("language", args.language)
+        # Store CLI settings to be applied when pipeline starts
+        # (project_state is created in run_pipeline)
+        orchestrator._cli_settings = {
+            "voice_source": args.voice,
+            "affiliate_inject": not args.no_affiliate,
+            "language": args.language,
+            "pre_recorded_audio_path": args.audio_path if args.voice == "pre_recorded" and args.audio_path else None
+        }
         
-        if args.voice == "pre_recorded" and args.audio_path:
-            if not os.path.exists(args.audio_path):
-                print(f"❌ Error: Audio file not found: {args.audio_path}")
-                sys.exit(1)
-            orchestrator.project_state.set_metadata("pre_recorded_audio_path", args.audio_path)
         print("✅ Systems ready\n")
         
     except Exception as e:
         print(f"❌ Initialization failed: {e}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
     
     # Execute pipeline

@@ -98,6 +98,10 @@ class ProjectState:
         self.state["metadata"][key] = value
         self.save()
     
+    def get_metadata(self, key: str, default: Any = None) -> Any:
+        """Get metadata value by key."""
+        return self.state.get("metadata", {}).get(key, default)
+    
     def add_error(self, error: str):
         """Add an error message."""
         # SECURITY: Mask any sensitive data in error messages
@@ -196,6 +200,10 @@ class ProjectState:
     def get_all(self) -> dict:
         """Get full state."""
         return self.state.copy()
+    
+    def to_dict(self) -> dict:
+        """Get full state (alias for get_all, used by orchestrator)."""
+        return self.get_all()
     
     def reset(self):
         """Reset the project state."""

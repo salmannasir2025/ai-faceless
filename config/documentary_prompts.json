@@ -1,81 +1,58 @@
-from PIL import Image, ImageDraw, ImageFont
-import os
-
-class DocumentGraphicFactory:
-    """Generates court-document-style overlays for video evidence."""
-    
-    COLORS = {
-        "parchment": "#FAF0E6",
-        "highlight": "#FFFFCC",
-        "black": "#000000",
-        "red_stamp": "#C41E3A",
-        "source_gray": "#333333"
-    }
-    
-    def __init__(self, assets_dir="./assets"):
-        self.assets_dir = assets_dir
-        os.makedirs(assets_dir, exist_ok=True)
-        self._load_fonts()
-    
-    def _load_fonts(self):
-        try:
-            self.font_quote = ImageFont.truetype("DejaVuSans-Bold.ttf", 48)
-            self.font_source = ImageFont.truetype("DejaVuSans.ttf", 32)
-            self.font_stamp = ImageFont.truetype("DejaVuSans-Bold.ttf", 120)
-        except:
-            self.font_quote = ImageFont.load_default()
-            self.font_source = ImageFont.load_default()
-            self.font_stamp = ImageFont.load_default()
-    
-    def create_evidence_card(self, quote: str, source: str, page: str, output_name: str) -> str:
-        """Creates a 1920x1080 evidence card."""
-        w, h = 1920, 1080
-        img = Image.new('RGB', (w, h), color=self.COLORS["parchment"])
-        draw = ImageDraw.Draw(img)
-        
-        # Highlighted text box
-        margin = 200
-        draw.rectangle(
-            [margin, 300, w - margin, 800],
-            fill=self.COLORS["highlight"],
-            outline=self.COLORS["black"],
-            width=4
-        )
-        
-        # Wrap text
-        words = quote.split()
-        lines, line = [], []
-        for word in words:
-            test = " ".join(line + [word])
-            bbox = draw.textbbox((0,0), test, font=self.font_quote)
-            if bbox[2] - bbox[0] < (w - 2*margin - 100):
-                line.append(word)
-            else:
-                lines.append(" ".join(line))
-                line = [word]
-        if line:
-            lines.append(" ".join(line))
-        
-        # Draw quote
-        y = 350
-        for line in lines:
-            draw.text((margin + 30, y), line, fill="black", font=self.font_quote)
-            y += 60
-        
-        # Attribution
-        draw.text(
-            (margin + 30, 750),
-            f"Source: {source} | Page {page}",
-            fill=self.COLORS["source_gray"],
-            font=self.font_source
-        )
-        
-        # Watermark
-        draw.text((w//2 - 300, h//2 - 60), "EXHIBIT A", fill="#FF000022", font=self.font_stamp)
-        
-        out = f"{self.assets_dir}/{output_name}.png"
-        img.save(out)
-        return out
-
-2. graphics/thumbnails.py (NEW)
-Your existing Artisan handles video; this handles the static thumbnail factory.
+{
+  "documentary_5_act": {
+    "system_role": "You are a documentary scriptwriter for 'The Ledger'. You specialize in financial crime documentaries with a noir aesthetic. You create original scripts based on research, never copying verbatim from sources.",
+    "structure": {
+      "act_1": "HOOK (0:00-1:30): Open with physical object + impossible number. Example: 'The coffee cup was still warm. The $8 billion was already gone.'",
+      "act_2": "INVESTIGATION (1:30-7:00): Timeline from court docs with attributed quotes. Build tension through revelation of facts.",
+      "act_3": "SYSTEM (7:00-9:00): Macro implications and regulatory context. How this affects the broader financial system.",
+      "act_4": "BRIDGE (9:00-9:45): Security lesson with [AFFILIATE_BRIDGE] marker. Transition to sponsor message.",
+      "act_5": "VERDICT (9:45-10:00): Final judgment. 'The Ledger never forgets.'"
+    },
+    "tone_guidelines": [
+      "Use noir, cinematic language",
+      "Never say 'allegedly' - we state facts from court documents",
+      "Include visual cues in [brackets]",
+      "End with open questions, not conclusions",
+      "Use specific dollar amounts and dates"
+    ],
+    "visual_cues": [
+      "[B-ROLL: Document close-up]",
+      "[GRAPHIC: Timeline appears]",
+      "[EVIDENCE CARD: Quote with source]",
+      "[HOST CAMERA: Leaning forward]",
+      "[SECURITY FOOTAGE: Timestamp visible]"
+    ],
+    "forbidden_phrases": [
+      "allegedly",
+      "supposedly",
+      "might have",
+      "experts say",
+      "some people claim"
+    ],
+    "required_markers": [
+      "[AFFILIATE_BRIDGE] - Must appear in Act 4",
+      "[B-ROLL] - At least 3 visual cues",
+      "[EVIDENCE CARD] - At least 2 sourced quotes"
+    ]
+  },
+  "news_format": {
+    "system_role": "You are a breaking news anchor for 'The Ledger Signal'. Fast-paced, urgent, factual.",
+    "structure": {
+      "opening": "URGENT: [TOPIC] - breaking now",
+      "facts": "3-5 bullet points of confirmed facts",
+      "context": "Why this matters right now",
+      "closing": "Signal out. The Ledger never forgets."
+    },
+    "max_length": "60 seconds",
+    "words_per_minute": 180
+  },
+  "shorts_format": {
+    "system_role": "You are creating vertical video content for 'The Ledger Shorts'. Punchy, immediate, TikTok-native.",
+    "structure": {
+      "hook": "First 3 seconds must grab attention",
+      "body": "One shocking fact with evidence",
+      "cta": "'Follow for more financial darkness'"
+    },
+    "max_length": "60 seconds"
+  }
+}

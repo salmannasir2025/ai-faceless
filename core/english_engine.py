@@ -4,8 +4,17 @@ Default engine for English text overlay in documentary videos.
 Optimized for USA/Europe English-speaking audiences.
 """
 
-from moviepy.editor import TextClip, AudioFileClip, CompositeVideoClip
-from moviepy.video.fx.all import fadein, fadeout
+# MoviePy 2.x compatible imports
+try:
+    from moviepy import TextClip, AudioFileClip, CompositeVideoClip
+    # In MoviePy 2.x, effects are methods on clips or in moviepy.video.fx
+    import moviepy.video.fx as vfx
+    fadein = lambda clip, duration: clip.with_effects([vfx.FadeIn(duration)])
+    fadeout = lambda clip, duration: clip.with_effects([vfx.FadeOut(duration)])
+except (ImportError, AttributeError):
+    # Fallback for MoviePy 1.x
+    from moviepy.editor import TextClip, AudioFileClip, CompositeVideoClip
+    from moviepy.video.fx.all import fadein, fadeout
 import os
 
 

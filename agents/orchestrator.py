@@ -28,7 +28,12 @@ from legal.safety_checker import LegalSafetyChecker
 from voice.clone_manager import VoiceCloneManager
 from graphics.thumbnails import ThumbnailFactory
 from graphics.doc_graphics import DocumentGraphicFactory
-from integrations.notion_sync import NotionSync
+
+# NotionSync integration is optional - skip if not properly configured
+try:
+    from integrations.notion_sync import NotionSync
+except ImportError:
+    NotionSync = None  # Disable Notion integration if import fails
 
 class LedgerOrchestrator:
     """
@@ -51,9 +56,11 @@ class LedgerOrchestrator:
     ]
     
     def __init__(self, api_manager: APIManager, governor: Governor, channel: str = "ledger",
-                 progress_callback=None, prompt_callback=None, failover_manager=None):
+                 progress_callback=None, prompt_callback=None, failover_manager=None,
+                 dry_run: bool = False):
         self.api = api_manager
         self.gov = governor
+        self.dry_run = dry_run  # If True, skip external API calls
         self.channel = channel  # "ledger" or "signal"
         self.progress_callback = progress_callback  # For GUI updates
         self.prompt_callback = prompt_callback  # For GUI user prompts
@@ -72,7 +79,15 @@ class LedgerOrchestrator:
         self.scribe = DocumentaryScribe(api_manager)
         self.verifier = LegalVerifier(api_manager)
         self.artisan = DocumentaryArtisan(governor)
-        self.publisher = AffiliatePublisher(api_manager)
+        # YouTube publisher - only initialize if not in dry-run mode
+        if not self.dry_run:
+            try:
+                self.publisher = AffiliatePublisher(api_manager)
+            except FileNotFoundError:
+                print("  ⚠️  YouTube publisher not available (client_secrets.json missing)")
+                self.publisher = None
+        else:
+            self.publisher = None  # Skip YouTube in dry-run
         
         # NEW: Safety and production
         self.safety = LegalSafetyChecker()
@@ -82,7 +97,9 @@ class LedgerOrchestrator:
         )
         self.thumbs = ThumbnailFactory()
         self.doc_gfx = DocumentGraphicFactory()
-        self.notion = NotionSync(api_manager.get_key("NOTION_TOKEN"))
+        # Only initialize NotionSync if available and key is present
+        notion_token = api_manager.get_key("NOTION_TOKEN")
+        self.notion = NotionSync(notion_token) if NotionSync and notion_token else None
         
         # Affiliate config
         self.affiliate_links = {
@@ -153,6 +170,12 @@ class LedgerOrchestrator:
         self.project_state.set_metadata("topic", topic)
         self.project_state.set_metadata("style", style)
         
+        # Apply CLI settings if available
+        if hasattr(self, '_cli_settings'):
+            for key, value in self._cli_settings.items():
+                if value is not None:  # Only set non-None values
+                    self.project_state.set_metadata(key, value)
+        
         print(f"\n{'='*60}")
         print(f"🎬 STARTING PIPELINE: {project_id}")
         print(f"{'='*60}\n")
@@ -172,9 +195,13 @@ class LedgerOrchestrator:
             
             # Stage 3: VERIFY (Fact check)
             self._transition("verifying")
-            verified = self._run_verifier(script_data, research)
-            if not verified:
-                return self._fail("Verifier rejected script facts")
+            if self.dry_run:
+                print("  ⏭️  Skipping verification in dry-run mode")
+                verified = True
+            else:
+                verified = self._run_verifier(script_data, research)
+                if not verified:
+                    return self._fail("Verifier rejected script facts")
             
             # Stage 4: LEGAL SAFETY GATE (NON-NEGOTIABLE)
             self._transition("legal_check")
@@ -241,8 +268,7 @@ class LedgerOrchestrator:
         print("[SCOUT] Gathering intelligence...")
         research = self.scout.research(topic, depth="deep" if self.channel == "ledger" else "shallow")
         
-        self.project_state.set_agent_state("scout", {
-            "status": "completed",
+        self.project_state.set_agent_status("scout", status="completed", metadata={
             "sources_found": len(research.get("sources", [])),
             "court_docs": research.get("court_docs", []),
             "primary_quotes": research.get("quotes", [])
@@ -255,8 +281,7 @@ class LedgerOrchestrator:
         print("[SCRIBE] Writing documentary script...")
         script = self.scribe.write_documentary(topic, research, style, self.channel)
         
-        self.project_state.set_agent_state("scribe", {
-            "status": "completed",
+        self.project_state.set_agent_status("scribe", status="completed", metadata={
             "word_count": len(script.get("full_text", "").split()),
             "acts": list(script.get("acts", {}).keys())
         })
@@ -269,8 +294,7 @@ class LedgerOrchestrator:
         print("[VERIFIER] Cross-referencing claims...")
         result = self.verifier.verify(script, research)
         
-        self.project_state.set_agent_state("verifier", {
-            "status": "completed" if result else "failed",
+        self.project_state.set_agent_status("verifier", status="completed" if result else "failed", metadata={
             "claims_checked": result.get("claims_checked", 0),
             "confidence": result.get("confidence", 0)
         })
@@ -283,16 +307,16 @@ class LedgerOrchestrator:
         and financial advice liabilities.
         """
         print("[LEGAL GATE] Running safety scan...")
-        sources = self.project_state.get_agent_state("scout", {}).get("court_docs", [])
+        # Get scout output data
+        scout_data = self.project_state.get_agent_output("scout") or {}
+        sources = scout_data.get("court_docs", [])
         
         result = self.safety.scan(
             script=script.get("full_text", ""),
-            sources=sources,
-            topic=script.get("topic", "")
+            sources=sources
         )
         
-        self.project_state.set_agent_state("legal_gate", {
-            "status": "passed" if result["passed"] else "blocked",
+        self.project_state.set_agent_status("legal_gate", status="passed" if result["passed"] else "blocked", metadata={
             "risk_level": result["risk_level"],
             "issues": result["issues"],
             "timestamp": datetime.utcnow().isoformat()
@@ -353,8 +377,7 @@ class LedgerOrchestrator:
             self.voice_mgr.generate(clean_text, output_path, prefer_clone=True)
         )
         
-        self.project_state.set_agent_state("voice", {
-            "status": "completed",
+        self.project_state.set_agent_status("voice", status="completed", metadata={
             "path": audio_path,
             "engine": "elevenlabs_clone" if "elevenlabs" in str(audio_path).lower() else "edge_tts"
         })
@@ -394,8 +417,7 @@ class LedgerOrchestrator:
                 "cue": f"document_{idx}"
             })
         
-        self.project_state.set_agent_state("visuals", {
-            "status": "completed",
+        self.project_state.set_agent_status("visuals", status="completed", metadata={
             "thumbnail_count": len(thumb_paths),
             "evidence_cards": len(visuals["doc_graphics"])
         })
@@ -418,11 +440,11 @@ class LedgerOrchestrator:
             audio_path=audio_path,
             image_sequence=image_sequence,
             output_path=output_path,
-            color_grade="teal_orange_documentary"
+            lut_preset="ledger_teal_orange",
+            affiliate_links=self.affiliate_links
         )
         
-        self.project_state.set_agent_state("artisan", {
-            "status": "completed",
+        self.project_state.set_agent_status("artisan", status="completed", metadata={
             "output_path": final_path,
             "duration": self._get_audio_duration(audio_path)
         })
@@ -449,8 +471,7 @@ class LedgerOrchestrator:
             playlist_id=os.getenv("YOUTUBE_PLAYLIST_ID")
         )
         
-        self.project_state.set_agent_state("publisher", {
-            "status": "completed",
+        self.project_state.set_agent_status("publisher", status="completed", metadata={
             "video_id": result.get("video_id"),
             "url": result.get("url"),
             "privacy": "private"
@@ -502,10 +523,10 @@ class LedgerOrchestrator:
         }
     
     def _save_state(self) -> str:
-        state_file = f"states/{self.project_state.get_metadata('project_id')}.json"
-        os.makedirs("states", exist_ok=True)
-        self.project_state.save_to_file(state_file)
-        return state_file
+        """Save project state to file."""
+        # The project_state.save() method handles file saving internally
+        self.project_state.save()
+        return self.project_state.state_file
     
     def _sync_notion(self):
         """Push completed project to Notion database."""
