@@ -1,6 +1,6 @@
 # AI Faceless Channel Automation
 
-**The Ledger** - Financial Darkness Documentary Channel Automation v3.0
+**The Ledger** - Financial Darkness Documentary Channel Automation v3.0 (Enterprise)
 
 ## Overview
 
@@ -136,7 +136,7 @@ The GUI may crash on older systems due to tkinter/macOS compatibility. **Use CLI
 /usr/bin/python3 main.py "FTX Collapse" --dry-run --style documentary
 ```
 
-**Tested on**: MacBook Pro 2012 (Core i5, 16GB RAM) with OpenCore Legacy Patcher running macOS 15.4
+**Tested **: Working on MacBook Pro running macOS 15.4
 
 ### Language Settings
 
