@@ -211,3 +211,13 @@ This tool is for educational and documentary purposes. Users are responsible for
 - Complying with YouTube's Terms of Service
 - Following applicable laws regarding defamation and copyright
 - Properly disclosing AI-generated content and affiliate relationships
+
+---
+
+## 📬 Contact & Corporate Information
+| | |
+| --- | --- |
+| **Organization** | ABT PLUS LLC (Automated Business Technologies) |
+| **Website** | [www.abtplusllc.com](https://www.abtplusllc.com) |
+| **Support** | [support@abtplusllc.com](mailto:support@abtplusllc.com) |
+| **License** | MIT — Open Source |
