@@ -12,12 +12,22 @@ An automated content creation pipeline for producing documentary-style YouTube v
 **Default Language**: English  
 **Future Expansion**: Urdu-speaking markets (optional)
 
-## Architecture
+## 📊 Architectural Workflow & System Topology
 
-The system follows a state-driven pipeline with these stages:
+The system utilizes a State-Driven Orchestration model managed by dedicated AI agents across the pipeline.
 
-```
-SCOUT → SCRIBE → VERIFY → LEGAL_GATE → VOICE → ARTISAN → PUBLISH
+```mermaid
+graph TD
+    A[Orchestrator State Engine] -->|Dispatch| B(Scout: Research & Intel)
+    B -->|Verified Facts| C(Scribe: LLM Scripting)
+    C -->|Draft Script| D{Verifier: QA Fact Check}
+    D -->|Approved| E(Artisan: Asset Assembly & Voice)
+    D -->|Rejected| C
+    E -->|Final Render| F[Publisher: YouTube API]
+    
+    style A fill:#4D96FF,stroke:#333,stroke-width:2px,color:#fff
+    style D fill:#FF6B6B,stroke:#333,stroke-width:2px,color:#fff
+    style F fill:#00FF66,stroke:#333,stroke-width:2px,color:#000
 ```
 
 ### Agents
@@ -200,17 +210,10 @@ The Governor automatically detects hardware and optimizes:
 - **Legacy Intel** (2-core): Uses VideoToolbox for Mac hardware encoding
 - **Performance**: Uses CPU encoding with quality presets
 
-## License
-
-MIT License - See LICENSE file for details
-
-## Disclaimer
-
-This tool is for educational and documentary purposes. Users are responsible for:
-- Ensuring content accuracy
-- Complying with YouTube's Terms of Service
-- Following applicable laws regarding defamation and copyright
-- Properly disclosing AI-generated content and affiliate relationships
+## ⚖️ Open-Source Academic Licensing & Disclaimer
+This project is open-sourced under the terms of the standard **MIT License**. It is an architectural Proof of Concept (PoC) engineered strictly for local environment evaluation, educational research, and technical sandbox testing.
+* **Operational Immunity:** This software is provided "as is", without warranty of any kind. ABT PLUS LLC (Automated Business Technologies) assumes zero liability, tracking obligation, or financial tracing responsibility for how third-party actors configure, clone, or deploy this script framework.
+* **Compliance Boundary:** Users bear sole individual responsibility for ensuring that all data extraction loops, automation streams, or third-party API keys (e.g., Twilio, Deepgram, Gemini) linked to this code comply with regional laws (GDPR, CCPA), telecom carrier standards, and target infrastructure Terms of Service (ToS).
 
 ---
 

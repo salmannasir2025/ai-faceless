@@ -10,6 +10,10 @@ credentials.json
 *.key
 *.pem
 *.p12
+secrets.*
+
+# WebDriver Cache
+.wdm/
 
 # Audit Reports and Documentation (DO NOT COMMIT TO GITHUB)
 AUDIT_*.md
